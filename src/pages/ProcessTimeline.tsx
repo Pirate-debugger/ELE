@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { motion } from 'framer-motion';
 import { UserPlus, FileSearch, MapPin, Search, CheckSquare, Fingerprint } from 'lucide-react';
 
@@ -236,4 +237,4 @@ const ProcessTimeline = () => {
   );
 };
 
-export default ProcessTimeline;
+export default memo(ProcessTimeline);

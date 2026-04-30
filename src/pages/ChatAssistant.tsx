@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { Send, Bot, User, Loader2, AlertCircle, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
 import { getElectionResponse } from '../services/gemini';
 import { useLanguage } from '../context/LanguageContext';
+import DOMPurify from 'dompurify';
+import { logUserAction } from '../services/firebase';
 
 const renderFormattedText = (text: string) => {
   const parts = text.split(/(\*\*.*?\*\*)/g);
@@ -150,7 +152,10 @@ const ChatAssistant = () => {
     if (e) e.preventDefault();
     if (!input.trim() || isLoading) return;
 
-    const userText = input.trim();
+    const userText = DOMPurify.sanitize(input.trim());
+    if (!userText) return;
+    
+    logUserAction('chat_message_sent', { length: userText.length });
     const newUserMsg: Message = { id: Date.now().toString(), role: 'user', text: userText };
     setMessages(prev => [...prev, newUserMsg]);
     setInput('');
@@ -255,6 +260,7 @@ const ChatAssistant = () => {
             onChange={(e) => setInput(e.target.value)}
             placeholder={t('chatPlaceholder')}
             disabled={isLoading || isListening}
+            maxLength={250}
           />
           <button type="submit" disabled={!input.trim() || isLoading} className="btn-send" aria-label="Send message">
             <Send size={20} />

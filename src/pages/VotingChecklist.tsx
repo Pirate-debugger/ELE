@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { memo } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { CreditCard, MapPin, Fingerprint, Search } from 'lucide-react';
 
@@ -149,4 +150,4 @@ const VotingChecklist = () => {
   );
 };
 
-export default VotingChecklist;
+export default memo(VotingChecklist);

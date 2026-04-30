@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">81.63% </span>
+                <span class="strong">81.18% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>80/98</span>
+                <span class='fraction'>82/101</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">73.97% </span>
+                <span class="strong">73.33% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>54/73</span>
+                <span class='fraction'>55/75</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">84.61% </span>
+                <span class="strong">84.94% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>77/91</span>
+                <span class='fraction'>79/93</span>
             </div>
         
             
@@ -517,13 +517,21 @@
 <a name='L452'></a><a href='#L452'>452</a>
 <a name='L453'></a><a href='#L453'>453</a>
 <a name='L454'></a><a href='#L454'>454</a>
-<a name='L455'></a><a href='#L455'>455</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L455'></a><a href='#L455'>455</a>
+<a name='L456'></a><a href='#L456'>456</a>
+<a name='L457'></a><a href='#L457'>457</a>
+<a name='L458'></a><a href='#L458'>458</a>
+<a name='L459'></a><a href='#L459'>459</a>
+<a name='L460'></a><a href='#L460'>460</a>
+<a name='L461'></a><a href='#L461'>461</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">28x</span>
 <span class="cline-any cline-yes">28x</span>
 <span class="cline-any cline-yes">28x</span>
@@ -547,7 +555,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">22x</span>
 <span class="cline-any cline-yes">22x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -671,6 +679,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
@@ -772,6 +783,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -976,6 +988,8 @@ import { motion } from 'framer-motion';
 import { Send, Bot, User, Loader2, AlertCircle, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
 import { getElectionResponse } from '../services/gemini';
 import { useLanguage } from '../context/LanguageContext';
+import DOMPurify from 'dompurify';
+import { logUserAction } from '../services/firebase';
 &nbsp;
 const renderFormattedText = (text: string) =&gt; {
   const parts = text.split(/(\*\*.*?\*\*)/g);
@@ -1123,7 +1137,10 @@ const ChatAssistant = () =&gt; {
     <span class="missing-if-branch" title="else path not taken" >E</span>if (e) e.preventDefault();
     <span class="missing-if-branch" title="if path not taken" >I</span>if (!input.trim() || isLoading) <span class="cstat-no" title="statement not covered" >return;</span>
 &nbsp;
-    const userText = input.trim();
+    const userText = DOMPurify.sanitize(input.trim());
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (!userText) <span class="cstat-no" title="statement not covered" >return;</span>
+    
+    logUserAction('chat_message_sent', { length: userText.length });
     const newUserMsg: Message = { id: Date.now().toString(), role: 'user', text: userText };
     setMessages(prev =&gt; [...prev, newUserMsg]);
     setInput('');
@@ -1228,6 +1245,7 @@ const ChatAssistant = () =&gt; {
             onChange={(e) =&gt; setInput(e.target.value)}
             placeholder={t('chatPlaceholder')}
             disabled={isLoading || isListening}
+            maxLength={250}
           /&gt;
           &lt;button type="submit" disabled={!input.trim() || isLoading} className="btn-send" aria-label="Send message"&gt;
             &lt;Send size={20} /&gt;
@@ -1432,7 +1450,7 @@ export default ChatAssistant;
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-30T12:15:15.758Z
+                at 2026-04-30T12:54:19.300Z
             </div>
         <script src="../../prettify.js"></script>
         <script>
