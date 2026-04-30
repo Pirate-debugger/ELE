@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">68% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>17/25</span>
+                <span class='fraction'>25/25</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">77.77% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>7/9</span>
+                <span class='fraction'>9/9</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">68% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>17/25</span>
+                <span class='fraction'>25/25</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line medium'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -135,13 +135,11 @@
 <a name='L70'></a><a href='#L70'>70</a>
 <a name='L71'></a><a href='#L71'>71</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -150,7 +148,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -175,19 +175,19 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -195,19 +195,19 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { GoogleGenerativeAI } from "@google/generative-ai";
 &nbsp;
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
 &nbsp;
-const genAI = API_KEY ? <span class="branch-0 cbranch-no" title="branch not covered" >new GoogleGenerativeAI(API_KEY) </span>: null;
+const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 &nbsp;
 const SYSTEM_INSTRUCTION = `You are Votify Assistant, a helpful and knowledgeable AI designed to educate Indian citizens about their election process. 
 Your goals are:
@@ -246,18 +246,18 @@ function getMockResponse(input: string): Promise&lt;string&gt; {
 }
 &nbsp;
 export const getElectionResponse = async (userMessage: string, history: { role: string, parts: { text: string }[] }[] = []) =&gt; {
-  <span class="missing-if-branch" title="else path not taken" >E</span>if (!genAI) {
+  if (!genAI) {
     console.warn("Gemini API key is missing. Falling back to mock responses.");
     return getMockResponse(userMessage);
   }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  try {</span>
-    const model = <span class="cstat-no" title="statement not covered" >genAI.getGenerativeModel({ </span>
+  try {
+    const model = genAI.getGenerativeModel({ 
         model: "gemini-1.5-pro",
         systemInstruction: SYSTEM_INSTRUCTION 
     });
 &nbsp;
-    const chat = <span class="cstat-no" title="statement not covered" >model.startChat({</span>
+    const chat = model.startChat({
       history: history,
       generationConfig: {
         maxOutputTokens: 500,
@@ -265,12 +265,12 @@ export const getElectionResponse = async (userMessage: string, history: { role: 
       },
     });
 &nbsp;
-    const result = <span class="cstat-no" title="statement not covered" >await chat.sendMessage(userMessage);</span>
-    const response = <span class="cstat-no" title="statement not covered" >await result.response;</span>
-<span class="cstat-no" title="statement not covered" >    return response.text();</span>
+    const result = await chat.sendMessage(userMessage);
+    const response = await result.response;
+    return response.text();
   } catch (error) {
-<span class="cstat-no" title="statement not covered" >    console.error("Error calling Gemini API:", error);</span>
-<span class="cstat-no" title="statement not covered" >    return "I'm sorry, I encountered a network issue. Please check your connection or try again later.";</span>
+    console.error("Error calling Gemini API:", error);
+    return "I'm sorry, I encountered a network issue. Please check your connection or try again later.";
   }
 };
 &nbsp;</pre></td></tr></table></pre>
@@ -280,7 +280,7 @@ export const getElectionResponse = async (userMessage: string, history: { role: 
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-30T11:31:17.224Z
+                at 2026-04-30T12:15:15.758Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

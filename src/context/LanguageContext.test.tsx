@@ -51,4 +51,13 @@ describe('LanguageContext', () => {
 
     expect(screen.getByText('missing_key')).toBeInTheDocument();
   });
+
+  test('throws error if used outside provider', () => {
+    // Suppress console.error for this expected error test
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    
+    expect(() => render(<TestComponent />)).toThrow('useLanguage must be used within a LanguageProvider');
+    
+    consoleSpy.mockRestore();
+  });
 });

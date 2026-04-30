@@ -11,7 +11,7 @@ vi.mock('../services/gemini', () => ({
 
 describe('ChatAssistant Component', () => {
   const renderWithProvider = () => {
-    render(
+    return render(
       <LanguageProvider>
         <ChatAssistant />
       </LanguageProvider>
@@ -34,6 +34,18 @@ describe('ChatAssistant Component', () => {
     } as any;
     
     global.SpeechSynthesisUtterance = vi.fn() as any;
+    
+    // Mock SpeechRecognition
+    const mockSpeechRecognition = vi.fn().mockImplementation(function() {
+      return {
+        start: vi.fn(),
+        stop: vi.fn(),
+        lang: '',
+      };
+    });
+    (global.window as any).SpeechRecognition = mockSpeechRecognition;
+    (global.window as any).webkitSpeechRecognition = mockSpeechRecognition;
+    global.window.alert = vi.fn();
     
     // Mock scrollIntoView
     window.HTMLElement.prototype.scrollIntoView = vi.fn();
@@ -68,5 +80,60 @@ describe('ChatAssistant Component', () => {
     await waitFor(() => {
       expect(screen.getByText('This is a mock response from Gemini')).toBeInTheDocument();
     });
+  });
+
+  test('can toggle microphone and handle speech recognition', async () => {
+    renderWithProvider();
+    
+    // Test microphone toggle
+    const micButton = screen.getByRole('button', { name: /^Speak$/i });
+    fireEvent.click(micButton);
+    expect(micButton).toHaveClass('listening');
+    
+    // Click again to stop
+    fireEvent.click(micButton);
+    expect(micButton).not.toHaveClass('listening');
+  });
+
+  test('can trigger speech synthesis', async () => {
+    renderWithProvider();
+    
+    // We already have a welcome message model response
+    const speakButtons = screen.getAllByRole('button', { name: /Read message aloud/i });
+    expect(speakButtons.length).toBeGreaterThan(0);
+    
+    fireEvent.click(speakButtons[0]);
+    expect(global.window.speechSynthesis.speak).toHaveBeenCalled();
+  });
+
+  test('handles API errors gracefully', async () => {
+    vi.mocked(geminiService.getElectionResponse).mockResolvedValue('Error: Network issue');
+    
+    renderWithProvider();
+    
+    const input = screen.getByPlaceholderText(/Ask about the Indian election process/i);
+    fireEvent.change(input, { target: { value: 'Trigger error' } });
+    
+    const form = input.closest('form');
+    if (form) {
+      fireEvent.submit(form);
+    }
+    
+    // Wait for the error response
+    await waitFor(() => {
+      expect(screen.getByText('Error: Network issue')).toBeInTheDocument();
+    });
+  });
+
+  test('cleans up speech synthesis and recognition on unmount', () => {
+    const { unmount } = renderWithProvider();
+    
+    // Set listening to true
+    const micButton = screen.getByRole('button', { name: /^Speak$/i });
+    fireEvent.click(micButton);
+    
+    unmount();
+    
+    expect(global.window.speechSynthesis.cancel).toHaveBeenCalled();
   });
 });
