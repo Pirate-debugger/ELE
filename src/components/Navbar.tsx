@@ -30,7 +30,7 @@ const Navbar = () => {
           <Link to="/chat" className={`nav-link ${isActive('/chat')}`}>
             <MessageSquare size={18} /> {t('chat')}
           </Link>
-          <button className="lang-toggle btn-outline" onClick={toggleLanguage}>
+          <button className="lang-toggle btn-outline" onClick={toggleLanguage} aria-label="Toggle language">
             <Languages size={18} /> {language === 'en' ? 'हिंदी' : 'EN'}
           </button>
         </nav>

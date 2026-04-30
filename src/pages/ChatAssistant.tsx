@@ -4,6 +4,23 @@ import { Send, Bot, User, Loader2, AlertCircle, Mic, MicOff, Volume2, VolumeX } 
 import { getElectionResponse } from '../services/gemini';
 import { useLanguage } from '../context/LanguageContext';
 
+const renderFormattedText = (text: string) => {
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={index}>{part.slice(2, -2)}</strong>;
+    }
+    return <span key={index}>{
+      part.split('\n').map((line, i, arr) => (
+        <span key={i}>
+          {line}
+          {i !== arr.length - 1 && <br />}
+        </span>
+      ))
+    }</span>;
+  });
+};
+
 interface Message {
   id: string;
   role: 'user' | 'model';
@@ -28,21 +45,24 @@ const ChatAssistant = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     // Re-run welcome when language changes if we only have 1 message
-    if (messages.length === 1) {
-       setMessages([{
+    setMessages(prev => {
+      if (prev.length === 1) {
+        return [{
           id: 'welcome',
           role: 'model',
           text: language === 'en' 
             ? 'Namaste! I am Votify, your AI Election Assistant. You can type or speak to me!'
             : 'नमस्ते! मैं वोटिफाई हूँ, आपका एआई चुनाव सहायक। आप मुझसे टाइप करके या बोलकर पूछ सकते हैं!'
-       }]);
-    }
+        }];
+      }
+      return prev;
+    });
   }, [language]);
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -54,17 +74,20 @@ const ChatAssistant = () => {
   // Speech Recognition Setup
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.continuous = false;
       recognitionRef.current.interimResults = false;
       
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       recognitionRef.current.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
         setInput(transcript);
         setIsListening(false);
       };
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       recognitionRef.current.onerror = (event: any) => {
         console.error("Speech recognition error", event.error);
         setIsListening(false);
@@ -174,6 +197,7 @@ const ChatAssistant = () => {
                 className="btn-icon" 
                 onClick={() => speakText("Voice output is ready")}
                 title={isSpeaking ? "Stop Speaking" : "Start Speaking"}
+                aria-label={isSpeaking ? "Stop Speaking" : "Start Speaking"}
               >
                 {isSpeaking ? <VolumeX size={20} className="active-icon" /> : <Volume2 size={20} />}
               </button>
@@ -194,9 +218,9 @@ const ChatAssistant = () => {
               </div>
               <div className={`message-bubble ${msg.isError ? 'error-bubble' : ''}`}>
                 {msg.isError && <AlertCircle size={16} style={{ marginBottom: '0.5rem', color: '#ef4444' }} />}
-                <div dangerouslySetInnerHTML={{ __html: msg.text.replace(/\\n/g, '<br/>').replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>') }} />
+                <div>{renderFormattedText(msg.text)}</div>
                 {msg.role === 'model' && !msg.isError && (
-                  <button className="read-aloud-btn" onClick={() => speakText(msg.text)}>
+                  <button className="read-aloud-btn" onClick={() => speakText(msg.text)} aria-label="Read message aloud">
                     <Volume2 size={14} />
                   </button>
                 )}
@@ -220,6 +244,7 @@ const ChatAssistant = () => {
             className={`btn-mic ${isListening ? 'listening' : ''}`}
             onClick={toggleListening}
             title={t('speakText')}
+            aria-label={t('speakText')}
           >
             {isListening ? <MicOff size={20} /> : <Mic size={20} />}
           </button>
@@ -231,7 +256,7 @@ const ChatAssistant = () => {
             placeholder={t('chatPlaceholder')}
             disabled={isLoading || isListening}
           />
-          <button type="submit" disabled={!input.trim() || isLoading} className="btn-send">
+          <button type="submit" disabled={!input.trim() || isLoading} className="btn-send" aria-label="Send message">
             <Send size={20} />
           </button>
         </form>
