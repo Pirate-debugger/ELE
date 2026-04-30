@@ -1,5 +1,27 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 
+// Type definitions for Speech Recognition
+interface SpeechRecognitionEvent extends Event {
+  results: {
+    [index: number]: {
+      [index: number]: {
+        transcript: string;
+      };
+    };
+  };
+}
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start: () => void;
+  stop: () => void;
+  onresult: (event: SpeechRecognitionEvent) => void;
+  onerror: (event: any) => void;
+  onend: () => void;
+}
+
 /**
  * Custom hook for Speech Synthesis and Recognition
  * Improves Code Quality and Efficiency through separation of concerns.
@@ -7,17 +29,22 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 export const useSpeech = (language: 'en' | 'hi') => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = false;
-
-      recognitionRef.current.onerror = () => setIsListening(false);
-      recognitionRef.current.onend = () => setIsListening(false);
+    if (typeof window !== 'undefined') {
+      const Win = window as any;
+      const SpeechRecognitionConstructor = Win.SpeechRecognition || Win.webkitSpeechRecognition;
+      
+      if (SpeechRecognitionConstructor) {
+        recognitionRef.current = new SpeechRecognitionConstructor();
+        if (recognitionRef.current) {
+          recognitionRef.current.continuous = false;
+          recognitionRef.current.interimResults = false;
+          recognitionRef.current.onerror = () => setIsListening(false);
+          recognitionRef.current.onend = () => setIsListening(false);
+        }
+      }
     }
 
     return () => {
@@ -54,7 +81,7 @@ export const useSpeech = (language: 'en' | 'hi') => {
     if (!recognitionRef.current) return;
     
     recognitionRef.current.lang = language === 'hi' ? 'hi-IN' : 'en-IN';
-    recognitionRef.current.onresult = (event: any) => {
+    recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
       const transcript = event.results[0][0].transcript;
       onResult(transcript);
       setIsListening(false);
@@ -64,7 +91,7 @@ export const useSpeech = (language: 'en' | 'hi') => {
       recognitionRef.current.start();
       setIsListening(true);
     } catch (e) {
-      console.error(e);
+      console.error("Speech Recognition Start Error:", e);
     }
   }, [language]);
 
@@ -77,3 +104,4 @@ export const useSpeech = (language: 'en' | 'hi') => {
 
   return { isSpeaking, isListening, speak, stopSpeaking, startListening, stopListening };
 };
+
