@@ -1,11 +1,14 @@
-import { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Send, Bot, User, Loader2, AlertCircle, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
-import { getElectionResponse } from '../services/gemini';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Send, Bot, User, Loader2, AlertCircle, Mic, MicOff, Volume2, VolumeX, Trash2, ExternalLink } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
-import DOMPurify from 'dompurify';
-import { logUserAction } from '../services/firebase';
+import { useSpeech } from '../hooks/useSpeech';
+import { useChat } from '../hooks/useChat';
 
+/**
+ * Helper to render markdown-like formatting in messages safely.
+ * @param text The message text to format.
+ */
 const renderFormattedText = (text: string) => {
   const parts = text.split(/(\*\*.*?\*\*)/g);
   return parts.map((part, index) => {
@@ -23,215 +26,128 @@ const renderFormattedText = (text: string) => {
   });
 };
 
-interface Message {
-  id: string;
-  role: 'user' | 'model';
-  text: string;
-  isError?: boolean;
-}
-
+/**
+ * ChatAssistant Component
+ * Provides a production-grade AI interface for election education.
+ */
 const ChatAssistant = () => {
   const { t, language } = useLanguage();
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'welcome',
-      role: 'model',
-      text: language === 'en' 
-        ? 'Namaste! I am Votify, your AI Election Assistant. You can type or speak to me!'
-        : 'नमस्ते! मैं वोटिफाई हूँ, आपका एआई चुनाव सहायक। आप मुझसे टाइप करके या बोलकर पूछ सकते हैं!'
-    }
-  ]);
   const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const recognitionRef = useRef<any>(null);
 
+  const welcomeMsg = useMemo(() => language === 'en' 
+    ? 'Namaste! I am Votify, your AI Election Assistant. You can type or speak to me!'
+    : 'नमस्ते! मैं वोटिफाई हूँ, आपका एआई चुनाव सहायक। आप मुझसे टाइप करके या बोलकर पूछ सकते हैं!',
+  [language]);
+
+  const { isSpeaking, isListening, speak, stopSpeaking, startListening, stopListening } = useSpeech(language);
+  const { messages, isLoading, sendMessage, clearChat } = useChat(welcomeMsg);
+
+  // Sync welcome message on language change if it's the only message
   useEffect(() => {
-    // Re-run welcome when language changes if we only have 1 message
-    setMessages(prev => {
-      if (prev.length === 1) {
-        return [{
-          id: 'welcome',
-          role: 'model',
-          text: language === 'en' 
-            ? 'Namaste! I am Votify, your AI Election Assistant. You can type or speak to me!'
-            : 'नमस्ते! मैं वोटिफाई हूँ, आपका एआई चुनाव सहायक। आप मुझसे टाइप करके या बोलकर पूछ सकते हैं!'
-        }];
-      }
-      return prev;
-    });
-  }, [language]);
-  const scrollToBottom = () => {
+    if (messages.length === 1 && messages[0].id === 'welcome') {
+      clearChat(welcomeMsg);
+    }
+  }, [language, welcomeMsg, messages.length, clearChat]);
+
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isLoading]);
+  }, [messages, isLoading, scrollToBottom]);
 
-  // Speech Recognition Setup
-  useEffect(() => {
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = false;
-      
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      recognitionRef.current.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setInput(transcript);
-        setIsListening(false);
-      };
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      recognitionRef.current.onerror = (event: any) => {
-        console.error("Speech recognition error", event.error);
-        setIsListening(false);
-      };
-      
-      recognitionRef.current.onend = () => {
-        setIsListening(false);
-      };
-    }
-  }, []);
-
-  const toggleListening = () => {
+  const handleToggleListening = useCallback(() => {
     if (isListening) {
-      recognitionRef.current?.stop();
-      setIsListening(false);
+      stopListening();
     } else {
-      if (recognitionRef.current) {
-        recognitionRef.current.lang = language === 'hi' ? 'hi-IN' : 'en-IN';
-        recognitionRef.current.start();
-        setIsListening(true);
-      } else {
-        alert("Your browser does not support Speech Recognition.");
-      }
+      startListening((text) => setInput(text));
     }
-  };
-
-  const speakText = (text: string) => {
-    if (!('speechSynthesis' in window)) return;
-    
-    if (isSpeaking) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-      return;
-    }
-
-    const cleanText = text.replace(/\\*\\*/g, '').replace(/#/g, ''); // Remove basic markdown for speech
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = language === 'hi' ? 'hi-IN' : 'en-IN';
-    
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-    
-    window.speechSynthesis.speak(utterance);
-    setIsSpeaking(true);
-  };
-
-  // Cleanup speech on unmount
-  useEffect(() => {
-    return () => {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
-      if (recognitionRef.current && isListening) {
-         recognitionRef.current.stop();
-      }
-    };
-  }, [isListening]);
+  }, [isListening, stopListening, startListening]);
 
   const handleSend = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!input.trim() || isLoading) return;
 
-    const userText = DOMPurify.sanitize(input.trim());
-    if (!userText) return;
-    
-    logUserAction('chat_message_sent', { length: userText.length });
-    const newUserMsg: Message = { id: Date.now().toString(), role: 'user', text: userText };
-    setMessages(prev => [...prev, newUserMsg]);
+    const currentInput = input;
     setInput('');
-    setIsLoading(true);
-
-    const history = messages
-      .filter(m => m.id !== 'welcome' && !m.isError)
-      .map(m => ({
-        role: m.role,
-        parts: [{ text: m.text }]
-      }));
-
-    // Pass context about language
-    const contextPrefix = language === 'hi' ? "Please reply in Hindi. " : "";
+    const response = await sendMessage(currentInput, language);
     
-    const responseText = await getElectionResponse(contextPrefix + userText, history);
-    const isError = responseText.startsWith("Error:");
-    
-    setMessages(prev => [...prev, {
-      id: (Date.now() + 1).toString(),
-      role: 'model',
-      text: responseText,
-      isError
-    }]);
-    setIsLoading(false);
-    
-    // Auto speak the response
-    if (!isError) {
-       speakText(responseText);
+    if (response && !response.startsWith("Error:")) {
+      speak(response);
     }
   };
+
+  const handleClear = useCallback(() => {
+    if (window.confirm(language === 'en' ? "Clear all messages?" : "सभी संदेशों को मिटा दें?")) {
+      clearChat(welcomeMsg);
+      stopSpeaking();
+    }
+  }, [language, clearChat, welcomeMsg, stopSpeaking]);
 
   return (
     <div className="chat-page container">
       <div className="chat-container glass-card">
         <div className="chat-header">
           <div className="bot-avatar">
-            <Bot size={24} />
+            <Bot size={24} aria-hidden="true" />
           </div>
           <div className="header-info">
-            <h2>{t('chat')}</h2>
+            <div>
+              <h2>{t('chat')}</h2>
+              <p className="status-text">{isLoading ? (language === 'en' ? 'Thinking...' : 'सोच रहा हूँ...') : (language === 'en' ? 'Online' : 'ऑनलाइन')}</p>
+            </div>
             <div className="header-actions">
               <button 
                 className="btn-icon" 
-                onClick={() => speakText("Voice output is ready")}
+                onClick={handleClear}
+                title={language === 'en' ? "Clear Chat" : "चैट साफ़ करें"}
+                aria-label={language === 'en' ? "Clear Chat" : "चैट साफ़ करें"}
+              >
+                <Trash2 size={20} />
+              </button>
+              <button 
+                className={`btn-icon ${isSpeaking ? 'active-icon' : ''}`} 
+                onClick={() => isSpeaking ? stopSpeaking() : speak(language === 'en' ? "Voice output is ready" : "आवाज आउटपुट तैयार है")}
                 title={isSpeaking ? "Stop Speaking" : "Start Speaking"}
                 aria-label={isSpeaking ? "Stop Speaking" : "Start Speaking"}
               >
-                {isSpeaking ? <VolumeX size={20} className="active-icon" /> : <Volume2 size={20} />}
+                {isSpeaking ? <VolumeX size={20} /> : <Volume2 size={20} />}
               </button>
             </div>
           </div>
         </div>
 
-        <div className="messages-area">
-          {messages.map((msg) => (
-            <motion.div 
-              key={msg.id}
-              className={`message-wrapper ${msg.role}`}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <div className="message-avatar">
-                {msg.role === 'model' ? <Bot size={18} /> : <User size={18} />}
-              </div>
-              <div className={`message-bubble ${msg.isError ? 'error-bubble' : ''}`}>
-                {msg.isError && <AlertCircle size={16} style={{ marginBottom: '0.5rem', color: '#ef4444' }} />}
-                <div>{renderFormattedText(msg.text)}</div>
-                {msg.role === 'model' && !msg.isError && (
-                  <button className="read-aloud-btn" onClick={() => speakText(msg.text)} aria-label="Read message aloud">
-                    <Volume2 size={14} />
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          ))}
+        <div className="messages-area" role="log" aria-live="polite">
+          <AnimatePresence initial={false}>
+            {messages.map((msg) => (
+              <motion.div 
+                key={msg.id}
+                className={`message-wrapper ${msg.role}`}
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="message-avatar" aria-hidden="true">
+                  {msg.role === 'model' ? <Bot size={18} /> : <User size={18} />}
+                </div>
+                <div className={`message-bubble ${msg.isError ? 'error-bubble' : ''}`}>
+                  {msg.isError && <AlertCircle size={16} style={{ marginBottom: '0.5rem', color: '#ef4444' }} />}
+                  <div className="message-content">{renderFormattedText(msg.text)}</div>
+                  {msg.role === 'model' && !msg.isError && (
+                    <button 
+                      className="read-aloud-btn" 
+                      onClick={() => speak(msg.text)} 
+                      aria-label={language === 'en' ? "Read message aloud" : "संदेश जोर से पढ़ें"}
+                    >
+                      <Volume2 size={14} />
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
           {isLoading && (
             <motion.div className="message-wrapper model" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               <div className="message-avatar"><Bot size={18} /></div>
@@ -243,13 +159,22 @@ const ChatAssistant = () => {
           <div ref={messagesEndRef} />
         </div>
 
+        <div className="official-links">
+           <a href="https://voters.eci.gov.in/" target="_blank" rel="noopener noreferrer" className="link-pill">
+             <ExternalLink size={14} /> ECI Voter Portal
+           </a>
+           <a href="https://electoralsearch.eci.gov.in/" target="_blank" rel="noopener noreferrer" className="link-pill">
+             <ExternalLink size={14} /> Search Name
+           </a>
+        </div>
+
         <form className="chat-input-area" onSubmit={handleSend}>
           <button 
             type="button" 
             className={`btn-mic ${isListening ? 'listening' : ''}`}
-            onClick={toggleListening}
+            onClick={handleToggleListening}
             title={t('speakText')}
-            aria-label={t('speakText')}
+            aria-label={isListening ? "Stop Listening" : t('speakText')}
           >
             {isListening ? <MicOff size={20} /> : <Mic size={20} />}
           </button>
@@ -261,8 +186,14 @@ const ChatAssistant = () => {
             placeholder={t('chatPlaceholder')}
             disabled={isLoading || isListening}
             maxLength={250}
+            aria-label={t('chatPlaceholder')}
           />
-          <button type="submit" disabled={!input.trim() || isLoading} className="btn-send" aria-label="Send message">
+          <button 
+            type="submit" 
+            disabled={!input.trim() || isLoading} 
+            className="btn-send" 
+            aria-label={language === 'en' ? "Send message" : "संदेश भेजें"}
+          >
             <Send size={20} />
           </button>
         </form>
@@ -288,7 +219,7 @@ const ChatAssistant = () => {
           overflow: hidden;
         }
         .chat-header {
-          padding: 1.5rem;
+          padding: 1rem 1.5rem;
           background: rgba(15, 23, 42, 0.5);
           border-bottom: 1px solid var(--border-color);
           display: flex;
@@ -301,6 +232,8 @@ const ChatAssistant = () => {
           align-items: center;
           flex-grow: 1;
         }
+        .header-info h2 { font-size: 1.25rem; margin: 0; }
+        .status-text { font-size: 0.75rem; color: var(--success); margin: 0; }
         .bot-avatar {
           width: 48px;
           height: 48px;
@@ -311,6 +244,7 @@ const ChatAssistant = () => {
           justify-content: center;
           color: white;
         }
+        .header-actions { display: flex; gap: 0.5rem; }
         .btn-icon {
           background: transparent;
           color: var(--text-secondary);
@@ -322,27 +256,19 @@ const ChatAssistant = () => {
           background: rgba(255, 255, 255, 0.1);
           color: var(--text-primary);
         }
-        .active-icon {
-          color: var(--saffron);
-          animation: pulse 2s infinite;
-        }
+        .active-icon { color: var(--saffron); animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
         .messages-area {
           flex: 1;
           overflow-y: auto;
-          padding: 2rem;
+          padding: 1.5rem;
           display: flex;
           flex-direction: column;
           gap: 1.5rem;
         }
-        .message-wrapper {
-          display: flex;
-          gap: 1rem;
-          max-width: 85%;
-        }
-        .message-wrapper.user {
-          align-self: flex-end;
-          flex-direction: row-reverse;
-        }
+        .message-wrapper { display: flex; gap: 0.75rem; max-width: 85%; }
+        .message-wrapper.user { align-self: flex-end; flex-direction: row-reverse; }
         .message-avatar {
           width: 32px;
           height: 32px;
@@ -356,7 +282,7 @@ const ChatAssistant = () => {
         .user .message-avatar { background: rgba(245, 158, 11, 0.2); color: var(--accent-color); }
         
         .message-bubble {
-          padding: 1rem 1.25rem;
+          padding: 0.75rem 1rem;
           border-radius: 1rem;
           background: rgba(255, 255, 255, 0.05);
           border: 1px solid var(--border-color);
@@ -369,14 +295,13 @@ const ChatAssistant = () => {
           border-color: var(--primary-color);
           border-top-right-radius: 0;
         }
-        .model .message-bubble {
-          border-top-left-radius: 0;
-          padding-bottom: 2rem;
-        }
+        .model .message-bubble { border-top-left-radius: 0; padding-bottom: 2rem; }
+        .message-content { font-size: 0.95rem; }
+        
         .read-aloud-btn {
           position: absolute;
-          bottom: 0.5rem;
-          right: 0.5rem;
+          bottom: 0.4rem;
+          right: 0.4rem;
           background: rgba(255, 255, 255, 0.1);
           color: var(--text-secondary);
           border-radius: 50%;
@@ -388,12 +313,31 @@ const ChatAssistant = () => {
         }
         .read-aloud-btn:hover { color: white; background: rgba(255, 255, 255, 0.2); }
         
-        .error-bubble { border-color: #ef4444; background: rgba(239, 68, 68, 0.1); }
-        .typing { display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); padding-bottom: 1rem !important; }
-        .spinner { animation: spin 1s linear infinite; }
-        
+        .official-links {
+          display: flex;
+          gap: 0.75rem;
+          padding: 0.5rem 1.5rem;
+          background: rgba(0, 0, 0, 0.2);
+          border-top: 1px solid var(--border-color);
+          overflow-x: auto;
+        }
+        .link-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.4rem;
+          padding: 0.3rem 0.75rem;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid var(--border-color);
+          border-radius: 100px;
+          font-size: 0.75rem;
+          color: var(--text-secondary);
+          white-space: nowrap;
+          transition: all 0.2s;
+        }
+        .link-pill:hover { background: rgba(255, 255, 255, 0.1); color: var(--primary-color); border-color: var(--primary-color); }
+
         .chat-input-area {
-          padding: 1.5rem;
+          padding: 1rem 1.5rem;
           background: rgba(15, 23, 42, 0.5);
           border-top: 1px solid var(--border-color);
           display: flex;
@@ -405,10 +349,10 @@ const ChatAssistant = () => {
           background: rgba(0, 0, 0, 0.2);
           border: 1px solid var(--border-color);
           border-radius: 0.5rem;
-          padding: 1rem;
+          padding: 0.8rem 1rem;
           color: var(--text-primary);
           font-family: var(--font-body);
-          font-size: 1rem;
+          font-size: 0.95rem;
           outline: none;
         }
         .chat-input-area input:focus { border-color: var(--primary-color); }
@@ -416,8 +360,8 @@ const ChatAssistant = () => {
         .btn-send {
           background: var(--primary-color);
           color: white;
-          width: 50px;
-          height: 50px;
+          width: 44px;
+          height: 44px;
           border-radius: 0.5rem;
           display: flex;
           align-items: center;
@@ -429,8 +373,8 @@ const ChatAssistant = () => {
         .btn-mic {
           background: transparent;
           color: var(--text-secondary);
-          width: 50px;
-          height: 50px;
+          width: 44px;
+          height: 44px;
           border-radius: 50%;
           border: 1px solid var(--border-color);
           display: flex;
@@ -444,13 +388,14 @@ const ChatAssistant = () => {
           border-color: #ef4444;
           animation: pulse-red 1.5s infinite;
         }
-        @keyframes pulse-red {
-          0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-          70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-          100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
+        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .spinner { animation: spin 1s linear infinite; }
+
         @media (max-width: 768px) {
           .message-wrapper { max-width: 95%; }
+          .chat-page { padding: 0; height: calc(100vh - 80px); }
+          .chat-container { border-radius: 0; max-height: none; }
         }
       `}</style>
     </div>
@@ -458,3 +403,4 @@ const ChatAssistant = () => {
 };
 
 export default ChatAssistant;
+
